@@ -1,4 +1,5 @@
 #include <iostream>
+#include <algorithm>
 #include <Eigen/Dense>
 
 using namespace std;
@@ -23,27 +24,49 @@ void loadB(MatrixXd& B, VectorXd& u, int l)
         }
     }
 }
-void findC(VectorXd& c, double fo[], int vb[], int n)
+void findC(VectorXd& c, double fo[], MatrixXd& vb, int n)
 {
     // n = quant. de variaveis da base
     for (int i = 0; i < n; i++)
     {
-        c(i) = fo[vb[i]];
+        int index = static_cast<int>(vb(i, 0));
+        c(i) = fo[index];
         
     }
 }
 void calculateP(VectorXd& c, MatrixXd& B, VectorXd& p)
 {
     p = c.transpose() * B; //por padrao, c é coluna, então a transposicao é para transformá-lo em uma linha
-    
+    cout << p << endl;
 }
-// A[j] é uma coluna e nao uma linha
 
+// A[j] é uma coluna e nao uma linha
 void calculateU(MatrixXd &B, MatrixXd& A, VectorXd& u, int j)
 {
-    
     u = B * A.col(j);
 }
+
+void calculateReducedC(double fo[], VectorXd& reduced_cost, MatrixXd& A, VectorXd& p, MatrixXd& vb){
+    reduced_cost.setZero();
+    for(int i = 0; i < A.cols(); i++){
+        if(!(vb.array() == i).any()){
+            //significa que é nao basica
+            reduced_cost(i) = fo[i] - p.transpose() * A.col(i);
+        }
+    }
+    cout << reduced_cost << endl;
+}
+
+bool isOptimal(VectorXd& reduced_cost){
+    for(int i = 0; i < reduced_cost.rows(); i++){
+        if(reduced_cost(i) > 0){
+            return false;
+        }
+    }
+    return true;
+    //para escolher j: reduced_cost.maxCoeff();
+}
+
 
 int main()
 {
@@ -52,25 +75,31 @@ int main()
     A << 3, 2, 1, 2, 1, 0, 0, 1, 1, 1, 1, 0, 1, 0, 4, 3, 3, 4, 0, 0, 1;
     MatrixXd B(3, 3);
     B << 3, 1, 0, 1, 1, 0, 4, 3, 1;
-    int variaveis_basicas[] = {0, 2, 6};     // indices da matriz -> variavel -1
+    
     double fo[] = {19, 13, 12, 17, 0, 0, 0}; // função objetivo
+    VectorXd rhs(3);
+    rhs << 225, 117, 420;
 
+    MatrixXd variaveis_basicas(3, 2);
+    variaveis_basicas.col(0) << 0, 2, 6;  //linha 1 da matriz serão os indices da matriz -> variavel -1
+    variaveis_basicas.col(1) = B.inverse() * rhs;
+    
+    
     // calculando a inversa
     B = B.inverse();
     cout << "Matrix B inversa \n"
          << B << endl;
 
-    VectorXd c(3); // c = coeficientes da fo das variaveis basicas
-    VectorXd p(3); // p = duais
-    VectorXd u(3); // u = B^-1*Aj
+    VectorXd c(B.cols()); // c = coeficientes da fo das variaveis basicas
+    VectorXd p(B.cols()); // p = duais
+    VectorXd u(B.cols()); // u = B^-1*Aj
+    VectorXd reduced_cost(A.cols());
     
-    findC(c, fo, variaveis_basicas, B.rows()); // achar c a partir de quais variaveis tao na base
-    cout << c << endl;
+    findC(c, fo, variaveis_basicas, A.rows());
     calculateP(c, B, p);
-     cout << p << endl;
+    calculateReducedC(fo, reduced_cost, A, p, variaveis_basicas);
     
-    
-    // matriz e u para teste de loadB
+    // matriz e u para teste de loadB (exemplo livro bertsimas)
     MatrixXd teste(3, 3);
     teste << 1, 2, 3, -2, 3, 1, 4, -3, -2;
     cout << "Here is the input matrix teste \n"
