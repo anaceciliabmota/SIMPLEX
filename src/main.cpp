@@ -1,10 +1,13 @@
 #include <iostream>
 #include <algorithm>
 #include <limits>
+#include <numbers>
 #include <Eigen/Dense>
 
 using namespace std;
 using namespace Eigen;
+
+#define EPSILON 10e-5
 
 //colocar exceção de u < 0
 
@@ -69,7 +72,7 @@ void calculateReducedC(double fo[], VectorXd& reduced_cost, MatrixXd& A, VectorX
 
 bool isOptimal(VectorXd& reduced_cost){
     for(int i = 0; i < reduced_cost.rows(); i++){
-        if(reduced_cost(i) < 0){
+        if(reduced_cost(i) < -EPSILON){
             return false;
         }
     }
@@ -83,16 +86,18 @@ int findTeta(MatrixXd& vb, VectorXd u, double * teta){
     for(int i = 0; i < vb.rows();i++){
         if(u(i) > 0 && min > vb(i, 1)/u(i)){
             min = vb(i,1)/u(i);
-            l = i; //ou l = vb(i, 0)?
+            l = i;
         }
     }
     *teta = min;
     return l;
 }
 int chooseJ(VectorXd& reduced_cost){
-    Index index;
-    reduced_cost.minCoeff(&index);
-    return static_cast<int>(index);
+    for(int i = 0; i < reduced_cost.rows(); i++){
+        if(reduced_cost(i) < -EPSILON){
+            return i;
+        }
+    } 
 }
 
 void changingVariables(MatrixXd& vb, VectorXd& u, double teta, int l, int j){
@@ -130,7 +135,7 @@ Solution SIMPLEX(MatrixXd& A, MatrixXd& B, double fo[], MatrixXd& variaveis_basi
         else{
             int j = chooseJ(reduced_cost);
             calculateU(B, A, u , j);
-            if(u.maxCoeff() <= 0){
+            if(u.maxCoeff() < -EPSILON){
                 s.z = -1*numeric_limits<double>::infinity();
                 break;
             }else{
@@ -152,7 +157,6 @@ int main()
     A << 3, 2, 1, 2, 1, 0, 0, 1, 1, 1, 1, 0, 1, 0, 4, 3, 3, 4, 0, 0, 1;
     MatrixXd B(n, n);
     B << 3, 1, 0, 1, 1, 0, 4, 3, 1;
-    
     double fo[] = {-19, -13, -12, -17, 0, 0, 0}; // função objetivo
     VectorXd rhs(n);
     rhs << 225, 117, 420;
@@ -163,6 +167,7 @@ int main()
 
 
     Solution s = SIMPLEX(A, B, fo, variaveis_basicas, n);
+
     if(s.z != -1*numeric_limits<double>::infinity()){
         cout << "Solucao:" << endl; 
         for(int i = 0; i < n; i++){
