@@ -125,12 +125,12 @@ int chooseJ(VectorXd& reduced_cost){
     return 0; //pode deixar assim?  
 }
 
-bool isLower(VectorXd& p, Data* data, VectorXd& reduced_cost, int j){
+bool isLower(VectorXd& p, Data* data, int j){
     int ya = p.transpose() * data->getMatrixA().col(j);
-    if(reduced_cost(j) > ya){
-        return true;
+    if(data->getFO(j) > ya){
+        return false;
     }
-    return false;
+    return true;
 }
 
 void changingVariables(MatrixXd& vb, VectorXd& u, double teta, int l, int j, bool islower){
@@ -177,10 +177,10 @@ Solution simplex(Data* data, MatrixXd& B, MatrixXd& variaveis_basicas){
 
             int j = chooseJ(reduced_cost);
             calculateU(B, data, u , j);
-            bool islower = isLower(p, data, reduced_cost, j);
+            bool islower = isLower(p, data, j);
             bool unbounded = true;
             double teta;
-            int l = findTeta(data, j, islower ,variaveis_basicas, u, &teta, &unbounded);
+            int l = findTeta(data, j, islower,variaveis_basicas, u, &teta, &unbounded);
             if(unbounded){
                 s.z = -1*numeric_limits<double>::infinity();
                 break;
@@ -216,7 +216,6 @@ int main()
     }else{
         cout << "Solução ótima é igual a menos infinito";
     }
-    
     
     return 0;
 }
