@@ -79,40 +79,62 @@ bool isOptimal(VectorXd& reduced_cost){
     }
     return true;
 }
-bool isSatisfied(Data * data, int j, double teta, int i, MatrixXd& vb, bool islower, VectorXd& u){
-    //verifica se xB(t) é satisfeita para todos os upperbound e lowerbound
-    for(int k = 0; k < vb.rows(); k++){
-        int index = static_cast<int>(vb(k, 0));
-        if(islower){
-            if(data->getVectorL(index) > vb(k, 1) - teta*u(i)/*xB*/ || data->getVectorU(index) < vb(k, 1) - teta*u(i))//compara o lb de cada vb com o xj(t) correspondente
-                return false;
-        }else{
-            if(data->getVectorL(index) > vb(k, 1) + teta*u(i)/*xB*/ || data->getVectorU(index) < vb(k, 1) + teta*u(i))//compara o lb de cada vb com o xj(t) correspondente
-                return false;
-        }
-    }
-    //verifica se xj(t) é satisfeita pra o lowerbound e upperbound de j
-    if(islower){
-        if(data->getVectorL(j) > teta/*xj*/ || data->getVectorU(j) < teta)//compara o lb e o ub de cada vb com o xj(t) correspondente
-            return false;
-    }else{
-        if(data->getVectorL(j) > -1*teta/*xj*/ || data->getVectorU(j) < -1*teta)//compara o lb de cada vb com o xj(t) correspondente
-            return false;
-    }
-    return true;
-}
-int findTeta(Data * data, int j, bool islower, MatrixXd& vb, VectorXd u, double * teta, bool * unbounded){
-    *teta = -1*numeric_limits<double>::infinity();
+int findTeta(Data * data, int j, MatrixXd& vb, VectorXd u, double * teta, bool * unbounded, double reduced_cost_j){
+    *teta = numeric_limits<double>::infinity();
     int l;
-    for(int i = 0; i < vb.rows();i++){
-        if(u(i) > 0){
-            if(isSatisfied(data, j, vb(i, 1)/u(i)/*possivel teta*/, i, vb, islower, u)){
-                *teta = max(*teta, vb(i,1)/u(i)); 
-                l = i;
+    if(reduced_cost_j < 0){
+        for(int i = 0; i < vb.rows();i++){
+            double aux;
+            if(u(i) == 0){
+                aux = numeric_limits<double>::infinity();
+                if(aux < *teta){
+                    *teta = aux;
+                    l = i;
+                }
+            }else if(u(i) > 0){
+                aux = (vb(i, 1) - data->getVectorL(static_cast<int>(vb(i, 0))))/u(i);
+                if(aux < *teta){
+                    *teta = aux;
+                    l = i;
+                }
             }else{
-                *unbounded = false;
+                aux = (vb(i, 1) - data->getVectorU(static_cast<int>(vb(i, 0))))/u(i);
+                if(aux < *teta){
+                    *teta = aux;
+                    l = i;
+                }
             }
         }
+    }else if(reduced_cost_j > 0){
+        for(int i = 0; i < vb.rows(); i++){
+            double aux;
+            if(u(i) == 0){
+                aux = numeric_limits<double>::infinity();
+                if(aux < *teta){
+                    *teta = aux;
+                    l = i;
+                }
+            }else if(u(i) > 0){
+                aux = (data->getVectorU(static_cast<int>(vb(i, 0))) - vb(i, 1))/u(i);
+                if(aux < *teta){
+                    *teta = aux;
+                    l = i;
+                }
+            }else{
+                aux = (data->getVectorL(static_cast<int>(vb(i, 0))) - vb(i, 1))/u(i);
+                if(aux < *teta){
+                    *teta = aux;
+                    l = i;
+                }
+            }
+        }
+    }
+    *teta = min(*teta, data->getVectorU(j) - data->getVectorL(j));
+    
+    if(*teta == numeric_limits<double>::infinity()){
+        *unbounded = true;
+    }else{
+        *unbounded = false;
     }
     return l;
 }
@@ -180,7 +202,7 @@ Solution simplex(Data* data, MatrixXd& B, MatrixXd& variaveis_basicas){
             bool islower = isLower(p, data, j);
             bool unbounded = true;
             double teta;
-            int l = findTeta(data, j, islower,variaveis_basicas, u, &teta, &unbounded);
+            int l = findTeta(data, j,variaveis_basicas, u, &teta, &unbounded, reduced_cost(j));
             if(unbounded){
                 s.z = -1*numeric_limits<double>::infinity();
                 break;
