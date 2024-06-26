@@ -76,11 +76,10 @@ int chooseJ(Data * data, MatrixXd& variaveis_nao_basicas, VectorXd& p, bool * is
     for(int i = 0; i < variaveis_nao_basicas.rows(); i++){
         int index = static_cast<int>(variaveis_nao_basicas(i, 0));
         double ya = p.transpose() * data->getMatrixA().col(index);  
-        cout << ya << " ";
-        if( ya < data->getFO(index) && variaveis_nao_basicas(i, 1) < data->getVectorU(index)){    
+        if( ya > data->getFO(index) && variaveis_nao_basicas(i, 1) < data->getVectorU(index)){    
             *isoptimal = false;
             return index;
-        }else if(ya > data->getFO(index) && variaveis_nao_basicas(i, 1) > data->getVectorL(index)){
+        }else if(ya < data->getFO(index) && variaveis_nao_basicas(i, 1) > data->getVectorL(index)){
             *isoptimal = false;
             return index;
         }
@@ -88,10 +87,10 @@ int chooseJ(Data * data, MatrixXd& variaveis_nao_basicas, VectorXd& p, bool * is
     *isoptimal = true;
     return 0;
 }
-int findTeta(Data * data, int j, MatrixXd& vb, VectorXd u, double * teta, bool * unbounded, double reduced_cost_j){
+int findTeta(Data * data, int j, MatrixXd& vb, VectorXd u, double * teta, bool * unbounded, bool is_negative){
     *teta = numeric_limits<double>::infinity();
     int l;
-    if(reduced_cost_j < 0){
+    if(is_negative){
         for(int i = 0; i < vb.rows();i++){
             double aux;
             if(u(i) == 0){
@@ -114,7 +113,7 @@ int findTeta(Data * data, int j, MatrixXd& vb, VectorXd u, double * teta, bool *
                 }
             }
         }
-    }else if(reduced_cost_j > 0){
+    }else {
         for(int i = 0; i < vb.rows(); i++){
             double aux;
             if(u(i) == 0){
@@ -157,21 +156,39 @@ int findTeta(Data * data, int j, MatrixXd& vb, VectorXd u, double * teta, bool *
     return 0; //pode deixar assim?  
 }*/
 
-bool isLower(VectorXd& p, Data* data, int j){
-    double ya = p.transpose() * data->getMatrixA().col(j);
-    if(data->getFO(j) > ya){
+bool isCjNegative(double reduced_cost){
+    if(reduced_cost > 0){
         return false;
     }
     return true;
 }
+//cj < 0, xj = uj
+double newNonBasic(bool is_negative, Data * data, int j){
+    if(is_negative){
+        if(data->getVectorL(j)  !=  -1*numeric_limits<double>::infinity()){
+            return data->getVectorL(j);
+        }else{
+            return 0;
+        }
+    }   
+    else{
+        if(data->getVectorU(j)  !=  numeric_limits<double>::infinity()){
+            return data->getVectorU(j);
+        }else{
+            return 0;
+        }
+    }
+    return 0;
+}
 
-void changingVariables(MatrixXd& variaveis_basicas, MatrixXd& variaveis_nao_basicas, VectorXd& u, double teta, int l, int j, bool islower){
+void changingVariables(MatrixXd& variaveis_basicas, MatrixXd& variaveis_nao_basicas, VectorXd& u, double teta, int l, int j, bool is_negative, Data * data, bool non_basic_direction){
+    int new_non_basic= static_cast<int>(variaveis_basicas(l, 0));
     auto linha_j = find(variaveis_nao_basicas.col(0).data(), variaveis_nao_basicas.col(0).data() + variaveis_nao_basicas.rows(), j);
     Index index_j = linha_j - variaveis_nao_basicas.col(0).data();
     variaveis_nao_basicas(index_j, 0) = variaveis_basicas(l, 0);
-    variaveis_nao_basicas(index_j, 1) = 0; //precisa cer alterado
-    for(int i = 0; i < variaveis_basicas.rows(); i++){
-        if(islower){
+    variaveis_nao_basicas(index_j, 1) = newNonBasic(non_basic_direction, data, new_non_basic);
+    for(int i = 0; i < variaveis_basicas.rows(); i++){ 
+        if(is_negative){
             if(i == l){
                 variaveis_basicas(i, 0) = j;
                 variaveis_basicas(i, 1) = teta;
@@ -201,11 +218,9 @@ Solution simplex(Data* data, MatrixXd& B, MatrixXd& variaveis_basicas, MatrixXd&
         
         findC(c, variaveis_basicas, data, n);
         calculateP(c, B, p);
-        cout << p.transpose() << endl;
         calculateReducedC(reduced_cost, p, variaveis_basicas, data);
         bool isoptimal;
         int j = chooseJ(data, variaveis_nao_basicas, p, &isoptimal);
-        cout << endl;
         //cout << j;
         if(isoptimal){
             s.variaveis_basicas = variaveis_basicas;
@@ -213,9 +228,8 @@ Solution simplex(Data* data, MatrixXd& B, MatrixXd& variaveis_basicas, MatrixXd&
             break;
         }
         else{
-            //int j = chooseJ(reduced_cost);
             calculateU(B, data, u , j);
-            bool islower = isLower(p, data, j);
+            bool is_negative = isCjNegative(reduced_cost(j));
             bool unbounded = true;
             double teta;
             int l = findTeta(data, j,variaveis_basicas, u, &teta, &unbounded, reduced_cost(j));
@@ -223,7 +237,8 @@ Solution simplex(Data* data, MatrixXd& B, MatrixXd& variaveis_basicas, MatrixXd&
                 s.z = -1*numeric_limits<double>::infinity();
                 break;
             }
-            changingVariables(variaveis_basicas, variaveis_nao_basicas, u, teta, l, j, islower);
+            int new_non_basic= static_cast<int>(variaveis_basicas(l, 0));
+            changingVariables(variaveis_basicas, variaveis_nao_basicas, u, teta, l, j, is_negative, data, isCjNegative(reduced_cost(new_non_basic)));
             loadB(B, u, l);
         }
     }
@@ -232,7 +247,6 @@ Solution simplex(Data* data, MatrixXd& B, MatrixXd& variaveis_basicas, MatrixXd&
 int main()
 {
     ////passando dados manualmente enquanto nao tenho a leitura de arquivos/////
-    
     Data* data = new Data(3, 7);
     int n = data->getMatrixA().rows();
     MatrixXd B(n, n);
@@ -241,6 +255,7 @@ int main()
     variaveis_basicas.col(0) << 0, 2, 6;  //linha 1 da matriz serão os indices da matriz -> variavel -1
     variaveis_basicas.col(1) = B.inverse() * data->getRHS();
 
+    
     int m = data->getMatrixA().cols() - n;
     MatrixXd variaveis_nao_basicas(m, 2);
     variaveis_nao_basicas.col(0) << 1, 3, 4, 5;
@@ -261,16 +276,18 @@ int main()
     return 0;
 }
 
-/*MatrixXd A(, );
-    n = A.rows();
-    A << ;
+/*
+    Data* data = new Data(2, 6);
+    int n = data->getMatrixA().rows();
     MatrixXd B(n, n);
-    B << ;
-    
-    double fo[] = {-}; // função objetivo
-    VectorXd rhs(n);
-    rhs << 2;
-
+    B << 1, 0,
+         0, 1;
     MatrixXd variaveis_basicas(n, 2);
-    variaveis_basicas.col(0) << ;  //linha 1 da matriz serão os indices da matriz -> variavel -1
-    variaveis_basicas.col(1) = B.inverse() * rhs;*/
+    variaveis_basicas.col(0) << 4, 5;  //linha 1 da matriz serão os indices da matriz -> variavel -1
+    variaveis_basicas.col(1) = B.inverse() * data->getRHS();
+
+    int m = data->getMatrixA().cols() - n;
+    MatrixXd variaveis_nao_basicas(m, 2);
+    variaveis_nao_basicas.col(0) << 0, 1, 2, 3;
+    variaveis_nao_basicas.col(1) << 1, 1, 1, 10;
+*/
