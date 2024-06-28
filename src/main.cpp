@@ -186,24 +186,26 @@ void changingVariables(MatrixXd& variaveis_basicas, MatrixXd& variaveis_nao_basi
     auto linha_j = find(variaveis_nao_basicas.col(0).data(), variaveis_nao_basicas.col(0).data() + variaveis_nao_basicas.rows(), j);
     Index index_j = linha_j - variaveis_nao_basicas.col(0).data();
     variaveis_nao_basicas(index_j, 0) = variaveis_basicas(l, 0);
+    double xj = variaveis_nao_basicas (index_j, 1);
     variaveis_nao_basicas(index_j, 1) = newNonBasic(non_basic_direction, data, new_non_basic);
     for(int i = 0; i < variaveis_basicas.rows(); i++){ 
         if(is_negative){
             if(i == l){
                 variaveis_basicas(i, 0) = j;
-                variaveis_basicas(i, 1) = teta;
+                variaveis_basicas(i, 1) = xj + teta;
             }else{
                 variaveis_basicas(i, 1) = variaveis_basicas(i, 1) - teta*u(i);
             }
         }else{
             if(i == l){
                 variaveis_basicas(i, 0) = j;
-                variaveis_basicas(i, 1) = -teta;
+                variaveis_basicas(i, 1) = xj - teta;
             }else{
                 variaveis_basicas(i, 1) = variaveis_basicas(i, 1) + teta*u(i);
             }
         }
     }
+    
 }
 
 Solution simplex(Data* data, MatrixXd& B, MatrixXd& variaveis_basicas, MatrixXd& variaveis_nao_basicas){
@@ -214,6 +216,7 @@ Solution simplex(Data* data, MatrixXd& B, MatrixXd& variaveis_basicas, MatrixXd&
     VectorXd u(n); // u = B^-1*Aj
     VectorXd reduced_cost(data->getMatrixA().cols());
     Solution s;
+    cout << variaveis_basicas << endl;
     while(true){
         
         findC(c, variaveis_basicas, data, n);
@@ -237,7 +240,8 @@ Solution simplex(Data* data, MatrixXd& B, MatrixXd& variaveis_basicas, MatrixXd&
                 s.z = -1*numeric_limits<double>::infinity();
                 break;
             }
-            int new_non_basic= static_cast<int>(variaveis_basicas(l, 0));
+            cout << variaveis_basicas << endl << endl<< variaveis_nao_basicas << endl << endl;
+            int new_non_basic = static_cast<int>(variaveis_basicas(l, 0));
             changingVariables(variaveis_basicas, variaveis_nao_basicas, u, teta, l, j, is_negative, data, isCjNegative(reduced_cost(new_non_basic)));
             loadB(B, u, l);
         }
@@ -247,20 +251,20 @@ Solution simplex(Data* data, MatrixXd& B, MatrixXd& variaveis_basicas, MatrixXd&
 int main()
 {
     ////passando dados manualmente enquanto nao tenho a leitura de arquivos/////
-    Data* data = new Data(3, 7);
+    
+    Data* data = new Data(2, 8);
     int n = data->getMatrixA().rows();
     MatrixXd B(n, n);
-    B << 3, 1, 0, 1, 1, 0, 4, 3, 1;
+    B << 0, -1,
+         1, 1;
     MatrixXd variaveis_basicas(n, 2);
-    variaveis_basicas.col(0) << 0, 2, 6;  //linha 1 da matriz serão os indices da matriz -> variavel -1
-    variaveis_basicas.col(1) = B.inverse() * data->getRHS();
+    variaveis_basicas.col(0) << 1, 4;  //linha 1 da matriz serão os indices da matriz -> variavel -1
+    variaveis_basicas.col(1) << 1, 1;//B.inverse() * data->getRHS();
 
-    
     int m = data->getMatrixA().cols() - n;
     MatrixXd variaveis_nao_basicas(m, 2);
-    variaveis_nao_basicas.col(0) << 1, 3, 4, 5;
-    variaveis_nao_basicas.col(1) << 0, 0, 0, 0;
-    
+    variaveis_nao_basicas.col(0) << 0, 2, 3, 5, 6, 7;
+    variaveis_nao_basicas.col(1) << 0, 4, 0, 0, 0, 0;
     Solution s = simplex(data, B, variaveis_basicas, variaveis_nao_basicas);
 
     if(s.z != -1*numeric_limits<double>::infinity()){
@@ -277,17 +281,18 @@ int main()
 }
 
 /*
-    Data* data = new Data(2, 6);
+    Data* data = new Data(3, 7);
     int n = data->getMatrixA().rows();
     MatrixXd B(n, n);
-    B << 1, 0,
-         0, 1;
+    B << 3, 1, 0, 1, 1, 0, 4, 3, 1;
     MatrixXd variaveis_basicas(n, 2);
-    variaveis_basicas.col(0) << 4, 5;  //linha 1 da matriz serão os indices da matriz -> variavel -1
+    variaveis_basicas.col(0) << 0, 2, 6;  //linha 1 da matriz serão os indices da matriz -> variavel -1
     variaveis_basicas.col(1) = B.inverse() * data->getRHS();
 
+    
     int m = data->getMatrixA().cols() - n;
     MatrixXd variaveis_nao_basicas(m, 2);
-    variaveis_nao_basicas.col(0) << 0, 1, 2, 3;
-    variaveis_nao_basicas.col(1) << 1, 1, 1, 10;
+    variaveis_nao_basicas.col(0) << 1, 3, 4, 5;
+    variaveis_nao_basicas.col(1) << 0, 0, 0, 0;
+    
 */
