@@ -157,7 +157,7 @@ int findTeta(Data * data, int j, MatrixXd& vb, VectorXd u, double * teta, bool *
 }*/
 
 bool isCjNegative(double reduced_cost){
-    if(reduced_cost > 0){
+    if(reduced_cost > -EPSILON){
         return false;
     }
     return true;
