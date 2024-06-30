@@ -19,7 +19,7 @@ Data::Data(int qtConstraints, int qtVariables)
    for(int i = 0; i < qtVariables; i++){
       fo[i] = funcao_o[i];
    }
-   A << 1, 0, 3, 1, -5, -2, -4, -6,
+   A << 1, 0, 3, 1, -5, -2, 4, -6,
         0, 1, -2, -1, 4, 1, -3, 5;
    rhs << 7, -3;   
    u << 8, 6, 4, 15, 2, 10, 10, 3;
