@@ -45,7 +45,7 @@ void findC(VectorXd& c, MatrixXd& vb, Data* data)
   for (int i = 0; i < vb.rows(); i++)
   {
     int index = static_cast<int>(vb(i, 0));
-    c(i) = data->getFO(index);
+    c(i) = data->getFO()(index);
 
   }
 }
@@ -66,7 +66,7 @@ void calculateReducedC( VectorXd& reduced_cost, VectorXd& p, MatrixXd& vb, Data*
   for(int i = 0; i < data->getMatrixA().cols(); i++){
     if(!(vb.col(0).array() == i).any()){
       //significa que é nao basica
-      reduced_cost(i) = data->getFO(i) - p.transpose() * data->getMatrixA().col(i);
+      reduced_cost(i) = data->getFO()(i) - p.transpose() * data->getMatrixA().col(i);
     }
   }
 }
@@ -81,14 +81,14 @@ int chooseJ(Data * data, MatrixXd& variaveis_nao_basicas, VectorXd& p, bool * is
 
     int index = static_cast<int>(variaveis_nao_basicas(i, 0));
     double ya = p.transpose() * data->getMatrixA().col(index);  
-    //cout << ya - data->getFO(index) << " ";
+    //cout << ya - data->getFO()(index) << " ";
 
-    if( ya - data->getFO(index) > EPSILON && variaveis_nao_basicas(i, 1) < data->getVectorU()(index)){    
+    if( ya - data->getFO()(index) > EPSILON && variaveis_nao_basicas(i, 1) < data->getVectorU()(index)){    
       *isoptimal = false;
       if (index < min_index)
         min_index = index;
 
-    }else if(ya - data->getFO(index) < -EPSILON  && variaveis_nao_basicas(i, 1) > data->getVectorL()(index)){
+    }else if(ya - data->getFO()(index) < -EPSILON  && variaveis_nao_basicas(i, 1) > data->getVectorL()(index)){
       *isoptimal = false;
       if (index < min_index)
         min_index = index;
@@ -196,7 +196,7 @@ void changingVariables(MatrixXd& variaveis_basicas, MatrixXd& variaveis_nao_basi
 }
 
 Solution simplex(Data* data, MatrixXd& B, MatrixXd& variaveis_basicas, MatrixXd& variaveis_nao_basicas){
-  B = B.inverse();
+
   int n = data->getMatrixA().rows();
   VectorXd c(n); // c = coeficientes da fo das variaveis basicas
   VectorXd p(n); // p = duais
@@ -239,9 +239,7 @@ Solution simplex(Data* data, MatrixXd& B, MatrixXd& variaveis_basicas, MatrixXd&
         if(restrictive){
             loadB(B, u, l);
         }
-            
     }
-
   }
   return s;
 }
@@ -258,14 +256,7 @@ double defineXj(double uj, double lj){
     return xj;
 }
 
-void PhaseOne(Data * data){
-
-  int n = data->getMatrixA().cols();
-  int m = data->getMatrixA().rows();
-
-  //variaveis para usar na resolução do simplex
-  MatrixXd variaveis_basicas(m, 2);
-  MatrixXd variaveis_nao_basicas(n, 2);
+MatrixXd PhaseOne(Data * data, MatrixXd& variaveis_basicas, MatrixXd& variaveis_nao_basicas, int n, int m){
 
   //variaveis para inserir na Data do problema auxiliar
   VectorXd rhs = data->getRHS();
@@ -309,7 +300,21 @@ void PhaseOne(Data * data){
 
   Solution s = simplex(&data_auxiliary, B, variaveis_basicas, variaveis_nao_basicas);
 
-  cout << s.variaveis_basicas << endl << s.variaveis_nao_basicas << endl;
+  for(int i = 0; i < m; i++){
+    u(n+i) = 0;
+    l(n+i) = 0;
+  }
+  //definindo nova fo
+  VectorXd fo(n+m);
+  fo.head(n) = data->getFO();
+  fo.tail(m).setZero();
+
+  data->setMatrixA(A);
+  data->setVectorU(u);
+  data->setVectorL(l);
+  data->setFO(fo);
+
+  return B;
 }
 int main()
 {
@@ -317,21 +322,14 @@ int main()
     mpsReader mps("model_min.QPS");
     Data data(mps.A, mps.b, mps.c, mps.ub, mps.lb);
 
-    PhaseOne(&data);
+    int n = data.getMatrixA().cols();
+    int m = data.getMatrixA().rows();
+
+    //variaveis para usar na resolução do simplex
+    MatrixXd variaveis_basicas(m, 2);
+    MatrixXd variaveis_nao_basicas(n, 2);
     
-    int n = data.getMatrixA().rows();
-    MatrixXd B(n, n);
-
-    B << 0,-5,1,4;
-
-    MatrixXd variaveis_basicas(n, 2);
-    variaveis_basicas.col(0) << 1, 4;  //linha 1 da matriz serão os indices da matriz -> variavel -1
-    variaveis_basicas.col(1) << 1, 1;//B.inverse() * data->getRHS();
-
-    int m = data.getMatrixA().cols() - n;
-    MatrixXd variaveis_nao_basicas(m, 2);
-    variaveis_nao_basicas.col(0) << 0, 2, 3, 5, 6, 7;
-    variaveis_nao_basicas.col(1) << 0, 4, 0, 0, 0, 0;
+    MatrixXd B = PhaseOne(&data, variaveis_basicas, variaveis_nao_basicas, n, m);
     
     Solution s = simplex(&data, B, variaveis_basicas, variaveis_nao_basicas);
     

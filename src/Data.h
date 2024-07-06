@@ -19,7 +19,11 @@ public:
         VectorXd getRHS(){return rhs;}  
         VectorXd getVectorU(){return u;}
         VectorXd getVectorL(){return l;}
-        double getFO(int index){return fo(index);}
+        VectorXd getFO(){return fo;}
+        void setMatrixA(MatrixXd& newA){A = newA;}
+        void setVectorU(VectorXd& newU){u = newU;}
+        void setVectorL(VectorXd& newL){l = newL;}
+        void setFO(VectorXd& newFO){fo = newFO;}
         
 private:
         MatrixXd A;
