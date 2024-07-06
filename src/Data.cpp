@@ -1,4 +1,5 @@
-#include "data.h"
+#include "Data.h"
+#include "mpsReader.h"
 #include <iostream>
 #include <Eigen/Dense>
 #include <limits>
@@ -7,13 +8,15 @@
 
 using namespace std;
 using namespace Eigen;
-Data::Data(int qtConstraints, int qtVariables)
-    : A(qtConstraints, qtVariables), 
-      rhs(qtConstraints), 
-      u(qtVariables), 
-      l(qtVariables)
+Data::Data(MatrixXd& mps_A, VectorXd& mps_b, VectorXd& mps_c, VectorXd& mps_ub, VectorXd& mps_lb)
 {
-   fo = new double[qtVariables];
+   A = mps_A;
+   rhs = mps_b;
+   fo = mps_c;
+   u = mps_ub;
+   l = mps_lb;
+
+   /*fo = new double[qtVariables];
    //depois substituido por uma função que pega os valores do arquivo
    double funcao_o[] = {-3, -1, -1, 2, -1, 1, 1, -4};
    for(int i = 0; i < qtVariables; i++){
@@ -23,8 +26,9 @@ Data::Data(int qtConstraints, int qtVariables)
         0, 1, -2, -1, 4, 1, -3, 5;
    rhs << 7, -3;   
    u << 8, 6, 4, 15, 2, 10, 10, 3;
-   l << 0, 0, 0, 0, 0, 0, 0, 0;
+   l << 0, 0, 0, 0, 0, 0, 0, 0;*/
 }
+
 /*
    double funcao_o[] = {-19, -13, -12, -17, 0, 0, 0};
    for(int i = 0; i < qtVariables; i++){
