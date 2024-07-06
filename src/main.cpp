@@ -263,31 +263,53 @@ void PhaseOne(Data * data){
   int n = data->getMatrixA().cols();
   int m = data->getMatrixA().rows();
 
+  //variaveis para usar na resolução do simplex
   MatrixXd variaveis_basicas(m, 2);
   MatrixXd variaveis_nao_basicas(n, 2);
 
+  //variaveis para inserir na Data do problema auxiliar
+  VectorXd rhs = data->getRHS();
   VectorXd u(m + n);
   VectorXd l(m + n);
-  VectorXd c(m + n);
-
-  VectorXd x(n + m);
-  for(int i = 0; i < n; i++)
-    x(i) = defineXj(data->getVectorU()(i), data->getVectorL()(i));
- 
-  for(int i = 0; i < m; i++){
-    x(i + n) = data->getRHS()(i) - data->getMatrixA().row(i)*x.head(n);
-  }
-  cout << x.transpose() << endl;
+  VectorXd c(m + n); //fo
   
+  //atribuindo as variaveis locais os valores das variaveis xj (nao artificiais) 
+  for(int i = 0; i < n; i++){
+    variaveis_nao_basicas(i, 0) = i;
+    variaveis_nao_basicas(i, 1) = defineXj(data->getVectorU()(i), data->getVectorL()(i));
+  }
+
   u.head(data->getVectorU().size()) = data->getVectorU();
   l.head(data->getVectorL().size()) = data->getVectorL();
 
+  //definindo valor das variaveis artificiais
   for(int i = 0; i < m; i++){
-    u(n+i) = (x(n+i) >= 0 ? numeric_limits<double>::infinity() : 0);
-    l(n+i) = (x(n+i) >= 0 ? 0 : -1*numeric_limits<double>::infinity());
+    variaveis_basicas(i, 0) = i + n;
+    variaveis_basicas(i, 1) = data->getRHS()(i) - data->getMatrixA().row(i)*variaveis_nao_basicas.col(1);
   }
-  cout << "u : " << u.transpose() << endl;
-  cout << "l : " << l.transpose() << endl;  
+  //definindo bounds das variaveis artificiais
+  for(int i = 0; i < m; i++){
+    u(n+i) = ((variaveis_basicas(i, 1) >= 0) ? numeric_limits<double>::infinity() : 0);
+    l(n+i) = ((variaveis_basicas(i, 1) >= 0) ? 0 : -1*numeric_limits<double>::infinity());
+  }
+ 
+  //definindo nova funcao objetivo
+  c.head(n).setZero(); //sera zero para toda variavel nao artificial
+
+  for(int i = 0; i < m; i++){
+    c(n+i) = (l(n+i) == 0 ? 1 : -1);
+  }
+
+  MatrixXd B = MatrixXd::Identity(m, m); //base do simplex
+
+  MatrixXd A(m, n+m);
+  A << data->getMatrixA(), B; //concatenando a matriz A com a matriz das variaveis artificiais
+
+  Data data_auxiliary(A, rhs, c, u, l);
+
+  Solution s = simplex(&data_auxiliary, B, variaveis_basicas, variaveis_nao_basicas);
+
+  cout << s.variaveis_basicas << endl << s.variaveis_nao_basicas << endl;
 }
 int main()
 {
