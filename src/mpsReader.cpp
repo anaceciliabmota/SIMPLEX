@@ -28,7 +28,13 @@ mpsReader::mpsReader(string fileName)
     {
         cout << "Error: MPSREADER - File not found" << endl;
     }
-
+    for(int i = 0; i < restricoes.size(); i++){
+        if(restricoes[i] == -1){
+            b(i) = 0;
+        }else if(restricoes[i] == 1){
+            b(i) = 0;
+        }
+    }
     readFile.close();
 }
 
@@ -338,7 +344,8 @@ void mpsReader::_splitRaw(MatrixXd &Araw, VectorXd &braw, VectorXd &c, MatrixXd 
             b.row(counter) = braw.row(i);
             if (row_labels[i] == "L")
             {
-                A(counter, n_cols + counter_inq) = 1;
+                restricoes.push_back(-1);
+                A(counter, n_cols + counter_inq) = -1;
                 lb(n_cols + counter_inq) = -numeric_limits<double>::infinity();
                 ub(n_cols + counter_inq) = braw(i);
                 //cout << "braw(i): " << braw(i) << " " << n_cols + counter_inq << endl;
@@ -346,11 +353,16 @@ void mpsReader::_splitRaw(MatrixXd &Araw, VectorXd &braw, VectorXd &c, MatrixXd 
             }
             else if (row_labels[i] == "G")
             {
-                A(counter, n_cols + counter_inq) = 1;
+                restricoes.push_back(1);
+                A(counter, n_cols + counter_inq) = -1;
                 ub(n_cols + counter_inq) = numeric_limits<double>::infinity();
                 lb(n_cols + counter_inq) = braw(i);
                 //cout << "braw(i): " << braw(i) << endl;
                 counter_inq++;
+            }
+            else if(row_labels[i] == "E")
+            {
+                restricoes.push_back(0);
             }
             counter++;
         }

@@ -246,7 +246,7 @@ double defineXj(double uj, double lj){
     return xj;
 }
 
-MatrixXd PhaseOne(Data * data, MatrixXd& variaveis_basicas, MatrixXd& variaveis_nao_basicas, int n, int m){
+MatrixXd PhaseOne(Data * data, MatrixXd& variaveis_basicas, MatrixXd& variaveis_nao_basicas, int n, int m, bool * is_feasible){
 
   //variaveis para inserir na Data do problema auxiliar
   VectorXd rhs = data->getRHS();
@@ -290,6 +290,11 @@ MatrixXd PhaseOne(Data * data, MatrixXd& variaveis_basicas, MatrixXd& variaveis_
 
   Solution s = simplex(&data_auxiliary, B, variaveis_basicas, variaveis_nao_basicas);
 
+  cout << s.z << endl;
+  if(s.z > EPSILON){
+    *is_feasible = false;
+  }
+
   for(int i = 0; i < m; i++){
     u(n+i) = 0;
     l(n+i) = 0;
@@ -314,6 +319,17 @@ int main(int argc, char** argv)
       return 1;
     }
     mpsReader mps(argv[1]);
+
+    cout << mps.A << endl;
+    cout << mps.ub.transpose() << endl;
+    cout << mps.lb.transpose() << endl;
+    cout << mps.b << endl << endl;
+    for(int i = 0; i < mps.restricoes.size(); i++){
+      cout << mps.restricoes[i] << " ";
+    }
+    cout << endl;
+
+    
     Data data(mps.A, mps.b, mps.c, mps.ub, mps.lb);
 
     int n = data.getMatrixA().cols();
@@ -322,12 +338,15 @@ int main(int argc, char** argv)
     //variaveis para usar na resolução do simplex
     MatrixXd variaveis_basicas(m, 2);
     MatrixXd variaveis_nao_basicas(n, 2);
+
+    bool is_feasible = true;
     
-    MatrixXd B = PhaseOne(&data, variaveis_basicas, variaveis_nao_basicas, n, m);
+    MatrixXd B = PhaseOne(&data, variaveis_basicas, variaveis_nao_basicas, n, m, &is_feasible);
     
-    Solution s = simplex(&data, B, variaveis_basicas, variaveis_nao_basicas);
-    
-    if(s.z != -1*numeric_limits<double>::infinity()){
+    if(is_feasible){
+      Solution s = simplex(&data, B, variaveis_basicas, variaveis_nao_basicas);
+
+      if(s.z != -1*numeric_limits<double>::infinity()){
         cout << "Solucao:" << endl; 
         for(int i = 0; i < data.getMatrixA().cols(); i++){
             if((s.variaveis_basicas.col(0).array() == i).any()){
@@ -342,11 +361,12 @@ int main(int argc, char** argv)
         
         }
         cout << "z: " << s.z << endl;
+      }else{
+          cout << "Solução ótima é igual a menos infinito" << endl;
+      }
     }else{
-        cout << "Solução ótima é igual a menos infinito";
+      cout << "Solucao indefinida" << endl;
     }
     
   return 0;
-
 }
-
