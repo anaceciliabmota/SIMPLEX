@@ -14,7 +14,6 @@ using namespace Eigen;
 
 
 struct Solution {
-  bool isOptimal;
   double z;
   MatrixXd variaveis_basicas;
   MatrixXd variaveis_nao_basicas;
@@ -39,6 +38,7 @@ void loadB(MatrixXd& B, VectorXd& u, int l)
     }
   }
 }
+
 void findC(VectorXd& c, MatrixXd& vb, Data* data)
 {
   // n = quant. de variaveis da base
@@ -49,12 +49,12 @@ void findC(VectorXd& c, MatrixXd& vb, Data* data)
 
   }
 }
+
 void calculateP(VectorXd& c, MatrixXd& B, VectorXd& p)
 {
   p = c.transpose() * B; //por padrao, c é coluna, então a transposicao é para transformá-lo em uma linha
 }
 
-// A[j] é uma coluna e nao uma linha
 void calculateU(MatrixXd &B, Data* data, VectorXd& u, int j)
 {
   u = B * data->getMatrixA().col(j);
@@ -81,7 +81,6 @@ int chooseJ(Data * data, MatrixXd& variaveis_nao_basicas, VectorXd& p, bool * is
 
     int index = static_cast<int>(variaveis_nao_basicas(i, 0));
     double ya = p.transpose() * data->getMatrixA().col(index);  
-    //cout << ya - data->getFO()(index) << " ";
 
     if( ya - data->getFO()(index) > EPSILON && variaveis_nao_basicas(i, 1) < data->getVectorU()(index)){    
       *isoptimal = false;
@@ -159,15 +158,6 @@ int findTeta(Data * data, int j, MatrixXd& vb, VectorXd u, double * teta, bool *
     }
     return l;
 }
-
-/*int chooseJ(VectorXd& reduced_cost){
-    for(int i = 0; i < reduced_cost.rows(); i++){
-        if(reduced_cost(i) < -EPSILON){
-            return i;
-        }   
-    }
-    return 0; //pode deixar assim?  
-}*/
 
 bool isCjNegative(double reduced_cost){
   if(reduced_cost > EPSILON){
@@ -316,10 +306,14 @@ MatrixXd PhaseOne(Data * data, MatrixXd& variaveis_basicas, MatrixXd& variaveis_
 
   return B;
 }
-int main()
+
+int main(int argc, char** argv)
 {
-  ////passando dados manualmente enquanto nao tenho a leitura de arquivos/////
-    mpsReader mps("model_min.QPS");
+    if(argc < 2){
+      cout << "Too few arguments" << endl;
+      return 1;
+    }
+    mpsReader mps(argv[1]);
     Data data(mps.A, mps.b, mps.c, mps.ub, mps.lb);
 
     int n = data.getMatrixA().cols();
@@ -356,31 +350,3 @@ int main()
 
 }
 
-/*
-  MatrixXd B(n, n);
-    B << 0,-5,1,4;
-
-    MatrixXd variaveis_basicas(n, 2);
-    variaveis_basicas.col(0) << 1, 4;  //linha 1 da matriz serão os indices da matriz -> variavel -1
-    variaveis_basicas.col(1) << 1, 1;//B.inverse() * data->getRHS();
-
-    int m = data.getMatrixA().cols() - n;
-    MatrixXd variaveis_nao_basicas(m, 2);
-    variaveis_nao_basicas.col(0) << 0, 2, 3, 5, 6, 7;
-    variaveis_nao_basicas.col(1) << 0, 4, 0, 0, 0, 0;
-
-    Data* data = new Data(3, 7);
-    int n = data->getMatrixA().rows();
-    MatrixXd B(n, n);
-    B << 3, 1, 0, 1, 1, 0, 4, 3, 1;
-    MatrixXd variaveis_basicas(n, 2);
-    variaveis_basicas.col(0) << 0, 2, 6;  //linha 1 da matriz serão os indices da matriz -> variavel -1
-    variaveis_basicas.col(1) = B.inverse() * data->getRHS();
-
-
-    int m = data->getMatrixA().cols() - n;
-    MatrixXd variaveis_nao_basicas(m, 2);
-    variaveis_nao_basicas.col(0) << 1, 3, 4, 5;
-    variaveis_nao_basicas.col(1) << 0, 0, 0, 0;
-
-*/
