@@ -313,18 +313,25 @@ void mpsReader::_getBnds(std::ifstream &readFile)
 
     do
     {
-        readFile >> label >> rowName >> colName >> value;
+        string line;
+        getline(readFile, line);
+        istringstream iss(line);
+        iss >> label >> rowName >> colName >> value;
         colIdx = _getIndex(col_list, colName);
-
+        cout << "l: " << label << " " << colName << endl;
         if (label == "LO")
             lb(colIdx) = value;
         else if (label == "UP")
             ub(colIdx) = value;
-        else
+        else if (label == "FR"){
+            ub(colIdx) = numeric_limits<double>::infinity();
+            lb(colIdx) = -numeric_limits<double>::infinity();
+        }
         {
-            if (_checkSectionName(label) == -1)
+            if (_checkSectionName(label) == 10){
                 std::cout << "Error: MPSREADER only accept LO and UP for Bounds" << std::endl;
-            break;
+                break;
+            }
         }
 
     } while (true);
@@ -392,6 +399,8 @@ int mpsReader::_checkSectionName(string checkWord) const
         return 9;
     else if (checkWord.compare("ENDATA") == 0)
         return 10;
+    else if(checkWord.compare("FR") == 0)
+        return 11;
     else
         return -1;
 }
