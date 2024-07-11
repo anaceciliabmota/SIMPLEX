@@ -323,9 +323,15 @@ void mpsReader::_getBnds(std::ifstream &readFile)
             lb(colIdx) = value;
         else if (label == "UP")
             ub(colIdx) = value;
-        else if (label == "FR"){
+        else if (label == "FR")
+        {
             ub(colIdx) = numeric_limits<double>::infinity();
             lb(colIdx) = -numeric_limits<double>::infinity();
+        } 
+        else if(label == "FX")
+        {
+            ub(colIdx) = value;
+            lb(colIdx) = value;
         }
         {
             if (_checkSectionName(label) == 10){
