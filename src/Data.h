@@ -15,11 +15,11 @@ public:
         Data(MatrixXd& mps_A, VectorXd& mps_b, VectorXd& mps_c, VectorXd& mps_ul, VectorXd& mps_lb);
         //~Data();
 
-        MatrixXd getMatrixA(){return A;}
-        VectorXd getRHS(){return rhs;}  
-        VectorXd getVectorU(){return u;}
-        VectorXd getVectorL(){return l;}
-        VectorXd getFO(){return fo;}
+        MatrixXd* getMatrixA(){return &A;}
+        VectorXd* getRHS(){return &rhs;}  
+        VectorXd* getVectorU(){return &u;}
+        VectorXd* getVectorL(){return &l;}
+        VectorXd* getFO(){return &fo;}
         void setMatrixA(MatrixXd& newA){A = newA;}
         void setVectorU(VectorXd& newU){u = newU;}
         void setVectorL(VectorXd& newL){l = newL;}
