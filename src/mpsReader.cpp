@@ -318,7 +318,7 @@ void mpsReader::_getBnds(std::ifstream &readFile)
         istringstream iss(line);
         iss >> label >> rowName >> colName >> value;
         colIdx = _getIndex(col_list, colName);
-        cout << "l: " << label << " " << colName << endl;
+        //cout << "l: " << label << " " << colName << endl;
         if (label == "LO")
             lb(colIdx) = value;
         else if (label == "UP")
@@ -335,7 +335,7 @@ void mpsReader::_getBnds(std::ifstream &readFile)
         }
         {
             if (_checkSectionName(label) == 10){
-                std::cout << "Error: MPSREADER only accept LO and UP for Bounds" << std::endl;
+                std::cout << /*"Error: MPSREADER only accept LO and UP for Bounds"*/ << std::endl;
                 break;
             }
         }
