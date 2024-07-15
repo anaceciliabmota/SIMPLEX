@@ -245,7 +245,7 @@ void mpsReader::_getAraw(ifstream &readFile, MatrixXd &Araw)
         getline(readFile, line);
         istringstream thisLine(line);
 
-        cout << thisLine.str() << endl;
+        //cout << thisLine.str() << endl;
 
         thisLine >> colName;
 
@@ -284,7 +284,7 @@ void mpsReader::_getbraw(std::ifstream &readFile, VectorXd &braw)
 
         thisLine >> colName;
 
-        cout << thisLine.str() << endl;
+        //cout << thisLine.str() << endl;
 
         if (_checkSectionName(colName) != -1)
             break;
@@ -335,7 +335,7 @@ void mpsReader::_getBnds(std::ifstream &readFile)
         }
         {
             if (_checkSectionName(label) == 10){
-                std::cout << /*"Error: MPSREADER only accept LO and UP for Bounds"*/ << std::endl;
+                std::cout << /*"Error: MPSREADER only accept LO and UP for Bounds"*/ std::endl;
                 break;
             }
         }
