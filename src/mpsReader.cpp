@@ -122,12 +122,12 @@ void mpsReader::_preprocScan(ifstream &readFile)
                 {
 
                     // count n_rows, n_rows_eq, n_rows_inq
-                    if (firstWord.compare("E") == 0)
+                    /*if (firstWord.compare("E") == 0)
                     {
                         n_rows++;
                         n_rows_eq++;
-                    }
-                    else if (firstWord.compare("L") == 0 || firstWord.compare("G") == 0)
+                    }*/
+                     if (firstWord.compare("L") == 0 || firstWord.compare("G") == 0 || firstWord.compare("E") == 0)
                     {
                         n_rows++;
                         n_rows_inq++;
@@ -245,7 +245,7 @@ void mpsReader::_getAraw(ifstream &readFile, MatrixXd &Araw)
         getline(readFile, line);
         istringstream thisLine(line);
 
-        //cout << thisLine.str() << endl;
+        cout << thisLine.str() << endl;
 
         thisLine >> colName;
 
@@ -284,7 +284,7 @@ void mpsReader::_getbraw(std::ifstream &readFile, VectorXd &braw)
 
         thisLine >> colName;
 
-        //cout << thisLine.str() << endl;
+        cout << thisLine.str() << endl;
 
         if (_checkSectionName(colName) != -1)
             break;
@@ -375,7 +375,14 @@ void mpsReader::_splitRaw(MatrixXd &Araw, VectorXd &braw, VectorXd &c, MatrixXd 
             }
             else if(row_labels[i] == "E")
             {
-                restricoes.push_back(0);
+                //restricoes.push_back(0);
+                //adicionado: 
+                restricoes.push_back(1);
+                A(counter, n_cols + counter_inq) = -1;
+                ub(n_cols + counter_inq) = braw(i);
+                lb(n_cols + counter_inq) = braw(i);
+                //cout << "braw(i): " << braw(i) << endl;
+                counter_inq++;
             }
             counter++;
         }
