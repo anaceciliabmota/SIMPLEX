@@ -13,6 +13,13 @@ class Data{
 
 public:
         Data(MatrixXd& mps_A, VectorXd& mps_b, VectorXd& mps_c, VectorXd& mps_ul, VectorXd& mps_lb);
+        Data(string fileName);
+
+        MatrixXd LeMatrix(ifstream &readFile, int m, int n);
+        void getDimensions(ifstream &readFile, int* m, int* n);
+        VectorXd LeVetor(ifstream &readFile, int dim);
+        double safe_stod(const std::string& str);
+        //MatrixXd readMatrixFromFile(const ifstream file, int numRows, int numCols);
         //~Data();
 
         MatrixXd* getMatrixA(){return &A;}
@@ -24,6 +31,10 @@ public:
         void setVectorU(VectorXd& newU){u = newU;}
         void setVectorL(VectorXd& newL){l = newL;}
         void setFO(VectorXd& newFO){fo = newFO;}
+        
+        VectorXd indice_vn;
+        VectorXd indice_vb;
+        VectorXd variaveis;
         
 private:
         MatrixXd A;

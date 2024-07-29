@@ -1,5 +1,6 @@
 #include "Data.h"
 #include "mpsReader.h"
+#include "Basis.h"
 #include <iostream>
 #include <algorithm>
 #include <limits>
@@ -45,7 +46,7 @@ void loadB(MatrixXd &B, VectorXd &u, int l);
 
 MatrixXd loadB2(MatrixXd &variaveis_basicas, Data *data);
 
-MatrixXd PhaseOne(Data *data, MatrixXd &variaveis_basicas, MatrixXd &variaveis_nao_basicas, int n, int m, bool *is_feasible);
+void PhaseOne(Data *data, MatrixXd &variaveis_basicas, MatrixXd &variaveis_nao_basicas, int n, int m, bool *is_feasible, Basis& b);
 
 void printData(Data& data, MatrixXd& variaveis_basicas, MatrixXd& variaveis_nao_basicas);
 
@@ -57,7 +58,7 @@ void printSolution(Data& data, Solution& s);
 
 void printVectorSequential(const Eigen::VectorXd& v);
 
-Solution simplex(Data *data, MatrixXd &B, MatrixXd &variaveis_basicas, MatrixXd &variaveis_nao_basicas, bool first_phase);
+Solution simplex(Data *data, Basis& b, MatrixXd &variaveis_basicas, MatrixXd &variaveis_nao_basicas, bool first_phase);
 
 int main(int argc, char **argv)
 {
@@ -68,19 +69,16 @@ int main(int argc, char **argv)
     cout << "Too few arguments" << endl;
     return 1;
   }
-  mpsReader mps(argv[1]);
-  /*
-  cout << "acabou de ler" << endl;
-  //cout << mps.A << endl;
-  cout << "ub: " << mps.ub.transpose() << endl;
-  cout << "lb: " << mps.lb.transpose() << endl;
-  cout << "b: " << mps.b.transpose() << endl << endl;
-  /*for (int i = 0; i < mps.restricoes.size(); i++)
-  {
-    cout << mps.restricoes[i] << " ";
-  }*/
-  Data data(mps.A, mps.b, mps.c, mps.ub, mps.lb);
+  //data provisorio para teste:
+  /*Data data(argv[1]);
+  
+  VectorXd fo = (*data.getFO());
+  fo = fo*-1;
+  data.setFO(fo);*/
 
+  mpsReader mps(argv[1]);
+ 
+  Data data(mps.A, mps.b, mps.c, mps.ub, mps.lb);
 
   int n = data.getMatrixA()->cols();
   int m = data.getMatrixA()->rows();
@@ -88,21 +86,47 @@ int main(int argc, char **argv)
   // variaveis para usar na resolução do simplex
   MatrixXd variaveis_basicas(m, 2);
   MatrixXd variaveis_nao_basicas(n, 2);
-
-  bool is_feasible = true;
-
-  MatrixXd B = PhaseOne(&data, variaveis_basicas, variaveis_nao_basicas, n, m, &is_feasible);
-  //printData(data, variaveis_basicas, variaveis_nao_basicas);
-  //exit(0);      
   
+
+  //colocando a solucao basica passada no arquivo para as variaveis
+  /*for(int i = 0; i < data.indice_vb.rows(); i++){
+    variaveis_basicas(i, 0) = data.indice_vb(i);
+    int index = static_cast<int>(data.indice_vb(i));
+    variaveis_basicas(i, 1) = data.variaveis(index);
+  }
+  for(int i = 0; i < data.indice_vn.rows(); i++){
+    variaveis_nao_basicas(i, 0) = data.indice_vn(i);
+    int index = static_cast<int>(data.indice_vn(i));
+    variaveis_nao_basicas(i, 1) = data.variaveis(index);
+  }*/
+
+  //printData(data, variaveis_basicas, variaveis_nao_basicas);
+  
+  //cout << variaveis_basicas << endl << endl;
+  //cout << variaveis_nao_basicas << endl;
+  
+
+  //MatrixXd B = loadB2(variaveis_basicas, &data);
+  //cout << B << endl;
+  //B = B.inverse();
+  //cout << B << endl;
+  MatrixXd B = MatrixXd :: Identity(m, m);
+  Basis b(B);
+  bool is_feasible = true;
+  
+  PhaseOne(&data, variaveis_basicas, variaveis_nao_basicas, n, m, &is_feasible, b);
+
+  //printData(data, variaveis_basicas, variaveis_nao_basicas);
+  //exit(0);    
+  cout << "###############" << endl;
   if (is_feasible)
   {
-    cout << "feasible" << endl;
-    Solution s = simplex(&data, B, variaveis_basicas, variaveis_nao_basicas, false);
+    //cout << "feasible" << endl;
+    Solution s = simplex(&data, b,  variaveis_basicas, variaveis_nao_basicas, false);
 
     if (s.z != -1 * numeric_limits<double>::infinity())
     {
-      printSolution(data, s);
+      //printSolution(data, s);
     }
     else
     {
@@ -117,8 +141,11 @@ int main(int argc, char **argv)
   double time_taken = double(end - start) / double(CLOCKS_PER_SEC);
   cout << "tempo gasto: " << fixed << time_taken;
   cout << " secs" << endl;
+
+  //b.~Basis();
   return 0;
 }
+
 void loadB(MatrixXd &B, VectorXd &u, int l)
 {
   for (int i = 0; i < B.rows(); i++)
@@ -176,12 +203,12 @@ void findC(VectorXd &c, MatrixXd &vb, Data *data)
 
 void calculateP(VectorXd &c, MatrixXd &B, VectorXd &p)
 {
-  p = c.transpose() * B; // por padrao, c é coluna, então a transposicao é para transformá-lo em uma linha
+  p = B.transpose().colPivHouseholderQr().solve(c);; // por padrao, c é coluna, então a transposicao é para transformá-lo em uma linha
 }
 
 void calculateU(MatrixXd &B, Data *data, VectorXd &u, int j)
 {
-  u = B * data->getMatrixA()->col(j);
+  u = B.colPivHouseholderQr().solve(data->getMatrixA()->col(j));
   //! any u > 0, nao tem solução otima
 }
 
@@ -228,14 +255,16 @@ int chooseJ(Data *data, MatrixXd &variaveis_nao_basicas, VectorXd &reduced_cost,
   for (int i = 0; i < variaveis_nao_basicas.rows(); i++)
   {
     int index = static_cast<int>(variaveis_nao_basicas(i, 0));
+    //cout << reduced_cost(index) << " " << variaveis_nao_basicas(i, 1) << " " <<   (*data->getVectorU())(index) << endl;
+    //cout << reduced_cost(index) << " " << variaveis_nao_basicas(i, 1) << " " <<   (*data->getVectorL())(index) << endl;
 
-    if (reduced_cost(index) < -EPSILON && variaveis_nao_basicas(i, 1) + EPSILON < (*data->getVectorU())(index))
+    if (reduced_cost(index) < -EPSILON && (variaveis_nao_basicas(i, 1) + EPSILON) < (*data->getVectorU())(index))
     {
       *isoptimal = false;
       if (index < min_index)
         min_index = index;
     }
-    else if (reduced_cost(index) > EPSILON && variaveis_nao_basicas(i, 1) - EPSILON > (*data->getVectorL())(index))
+    else if (reduced_cost(index) > EPSILON && (variaveis_nao_basicas(i, 1) - EPSILON) > (*data->getVectorL())(index))
     {
       *isoptimal = false;
       if (index < min_index)
@@ -248,7 +277,7 @@ int chooseJ(Data *data, MatrixXd &variaveis_nao_basicas, VectorXd &reduced_cost,
   return min_index;
 }
 
-int findTeta(Data *data, int j, MatrixXd &vb, VectorXd u, double *teta, bool *unbounded, bool is_negative, bool *restrictive, MatrixXd& B)
+int findTeta(Data *data, int j, MatrixXd &vb, VectorXd u, double *teta, bool *unbounded, bool is_negative, bool *restrictive)
 {
   *teta = numeric_limits<double>::infinity();
   int l;
@@ -436,12 +465,14 @@ void printIteration(Data& data, MatrixXd& variaveis_basicas, MatrixXd& variaveis
   cout << variaveis_nao_basicas << endl << endl;
 }
 
-Solution simplex(Data *data, MatrixXd &B, MatrixXd &variaveis_basicas, MatrixXd &variaveis_nao_basicas, bool first_phase)
+Solution simplex(Data *data, Basis& b, MatrixXd &variaveis_basicas, MatrixXd &variaveis_nao_basicas, bool first_phase)
 {
   int cont = 0;
   /*B = loadB2(variaveis_basicas, data);
   B = B.inverse();*/
+  //cout << "TAMANO VETOR::: " << b.v.size() << endl;  
   int n = data->getMatrixA()->rows();
+  //cout <<"n: "<< n << endl;
   VectorXd c(n); // c = coeficientes da fo das variaveis basicas
   VectorXd p(n); // p = duais
   VectorXd u(n); // u = B^-1*Aj
@@ -450,24 +481,30 @@ Solution simplex(Data *data, MatrixXd &B, MatrixXd &variaveis_basicas, MatrixXd 
 
   while (true)
   {
-
-     cont++;
+    //cout << "ITERACAO " << cont << endl;
+    //cout << endl << "b.v.size: " << b.v.size() << endl;
     findC(c, variaveis_basicas, data);
-
-    calculateP(c, B, p);
+    //cout << "c: " << c.transpose() << endl;
+    //calculateP(c, B, p);
+    b.getP(p, c);
+    //cout << "p: " << p.transpose() << endl;
 
     calculateReducedC(reduced_cost, p, variaveis_nao_basicas, data);
+
+    
+    //cout << reduced_cost.transpose() << endl;
 
     bool isoptimal;
 
     int j = chooseJ(data, variaveis_nao_basicas, reduced_cost, &isoptimal);
+    //cout << "j: " << j << endl;
 
-    s.z = c.transpose() * variaveis_basicas.col(1);
+    /*s.z = c.transpose() * variaveis_basicas.col(1);
 
     VectorXd non_basic_c(variaveis_nao_basicas.rows());
     findC(non_basic_c, variaveis_nao_basicas, data);
 
-    s.z += non_basic_c.transpose() * variaveis_nao_basicas.col(1);
+    s.z += non_basic_c.transpose() * variaveis_nao_basicas.col(1);*/
 
     
     /*if(first_phase && s.z < EPSILON){
@@ -488,45 +525,61 @@ Solution simplex(Data *data, MatrixXd &B, MatrixXd &variaveis_basicas, MatrixXd 
     }
     else
     {
-      calculateU(B, data, u, j);
-
+      //calculateU(B, data, u, j);
+      VectorXd a = data->getMatrixA()->col(j);
+      //cout << a.transpose() << endl;
+      b.getD(u, a);
+      //cout << "U: " << u.transpose() << endl;
+      
+     
+      //cout << "0";
       bool is_negative = isCjNegative(reduced_cost(j));
 
       bool unbounded = true, restrictive;
       double teta;
-      int l = findTeta(data, j, variaveis_basicas, u, &teta, &unbounded, is_negative, &restrictive, B);
+      //cout << "1" ;
+      int l = findTeta(data, j, variaveis_basicas, u, &teta, &unbounded, is_negative, &restrictive);
+      //cout << "2";
+      pair <int, VectorXd> pair(l, u);
+     
+     
+      //cout << b.v[cont].first <<  " " << b.v[cont].second.transpose() << endl;
+      //cout << "l: " << l << endl;
       if (unbounded)
       {
         s.z = -1 * numeric_limits<double>::infinity();
         break;
       }
       int new_non_basic = static_cast<int>(variaveis_basicas(l, 0));
-      cout << first_phase << " " << cont << " " << s.z << " " << j << " " << new_non_basic << endl;
+      //cout << first_phase << " " << cont << " " << s.z << " " << j << " " << new_non_basic << endl;
       changingVariables(variaveis_basicas, variaveis_nao_basicas, u, teta, l, j, is_negative, data, isCjNegative(reduced_cost(new_non_basic)), restrictive);
+      
       if (restrictive)
       { 
-        loadB(B, u, l);
+        if(b.v.size() == 20){
+          b.loadB(*data, variaveis_basicas);
+        }else{
+          b.addElement(pair);
+        }
+        
+        //cout << pair.first << " " << pair.second.transpose() << endl;
+        //B.col(l) = data->getMatrixA()->col(j);
+        //loadB(B, u, l);
         //VectorXd aux = B * variaveis_basicas.col(1);
         /*
         if(/*!(aux).isApprox(*data->getRHS(), EPSILON3)*//* cont > 20){
           B = loadB2(variaveis_basicas, data);
           B = B.inverse();
           cont = 0;
-        }*/
-        /*B = loadB2(variaveis_basicas, data);
-        B = B.inverse();*/
+        }
+        B = loadB2(variaveis_basicas, data);
+        B = B.inverse();  */
       }
        //printIteration(*data, variaveis_basicas, variaveis_nao_basicas, l, j, s, cont, teta);
-    if(cont ==  2){
-      //printIteration(*data, variaveis_basicas, variaveis_nao_basicas, l, j, s, cont, teta);
     }
-    }
-    if(cont == 220){
-      exit(0);
-    }
-    
   }
-  cout << "NUMERO DE ITERACOES: " << cont << endl;
+  cout << s.z << endl;
+  //cout << "NUMERO DE ITERACOES: " << cont << endl;
   return s;
 }
 
@@ -548,7 +601,7 @@ double defineXj(double uj, double lj)
   return xj;
 }
 
-MatrixXd PhaseOne(Data *data, MatrixXd &variaveis_basicas, MatrixXd &variaveis_nao_basicas, int n, int m, bool *is_feasible)
+void PhaseOne(Data *data, MatrixXd &variaveis_basicas, MatrixXd &variaveis_nao_basicas, int n, int m, bool *is_feasible, Basis& b)
 {
 
   // variaveis para inserir na Data do problema auxiliar
@@ -604,8 +657,9 @@ MatrixXd PhaseOne(Data *data, MatrixXd &variaveis_basicas, MatrixXd &variaveis_n
   cout << "vb: " << variaveis_basicas << endl;
   cout << "vn: " << variaveis_nao_basicas << endl;*/
 
-  printData(data_auxiliary, variaveis_basicas, variaveis_nao_basicas);
-  Solution s = simplex(&data_auxiliary, B, variaveis_basicas, variaveis_nao_basicas, true);
+  //printData(data_auxiliary, variaveis_basicas, variaveis_nao_basicas);
+
+  Solution s = simplex(&data_auxiliary, b, variaveis_basicas, variaveis_nao_basicas, true);
   //cout << s.z << endl;
   if (s.z > EPSILON)
   {
@@ -627,7 +681,6 @@ MatrixXd PhaseOne(Data *data, MatrixXd &variaveis_basicas, MatrixXd &variaveis_n
   data->setVectorL(l);
   data->setFO(fo);
 
-  return B;
 }
 
 void printMatrixSequential(MatrixXd& A) {
