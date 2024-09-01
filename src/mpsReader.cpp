@@ -26,7 +26,8 @@ mpsReader::mpsReader(string fileName)
     }
     else
     {
-        cout << "Error: MPSREADER - File not found" << endl;
+        cout << "\nError: MPSREADER - File not found" << endl;
+        exit(0);
     }
     for(int i = 0; i < restricoes.size(); i++){
         if(restricoes[i] == -1){

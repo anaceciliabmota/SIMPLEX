@@ -65,6 +65,7 @@
   int main(int argc, char **argv)
   {
     clock_t start, end;
+    start = clock();
     
     if (argc < 2)
     {
@@ -94,7 +95,8 @@
     int iteration = 0;
 
     bool is_feasible = true;
-    start = clock();
+
+    cout << "Solving..." << endl;
     Basis b = PhaseOne(&data, variaveis_basicas, variaveis_nao_basicas, n, m, &is_feasible, &iteration);
 
     Solution s;
