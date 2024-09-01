@@ -1,24 +1,18 @@
+ 
 #include "Data.h"
-#include "mpsReader.h"
-#include <iostream>
-#include <string>
-#include <Eigen/Dense>
-#include <limits>
-#include <numbers>
-#include <stdexcept>
 
 #define infinity std::numeric_limits<double>::infinity()
 
 using namespace std;
 using namespace Eigen;
-   Data::Data(MatrixXd& mps_A, VectorXd& mps_b, VectorXd& mps_c, VectorXd& mps_ub, VectorXd& mps_lb)
+Data::Data(MatrixXd& mps_A, VectorXd& mps_b, VectorXd& mps_c, VectorXd& mps_ub, VectorXd& mps_lb)
    {
-      A = mps_A;
+      A = mps_A.sparseView();
       rhs = mps_b;
       fo = mps_c;
       u = mps_ub;
       l = mps_lb;
-   }
+  }
 
 Data::Data(std::string fileName) {
     int m, n, col;
@@ -29,8 +23,8 @@ Data::Data(std::string fileName) {
     if (readFile.is_open()) {
       getDimensions(readFile, &m, &n);
       
-      A = LeMatrix(readFile, m, n);
-
+      MatrixXd A_dense = LeMatrix(readFile, m, n);
+      A = A_dense.sparseView();
       //le vetor c
       fo = LeVetor(readFile, n);
 
@@ -72,7 +66,7 @@ MatrixXd Data::LeMatrix(ifstream &readFile, int m, int n){
       for (int row = 0; row < m; ++row) {
          getline(readFile, line);
          std::istringstream thisLine(line);
-         //cout << thisLine.str() << endl;
+         cout << thisLine.str() << endl;
          col = 0;
          while (thisLine >> number) {
             matrizA(row, col) = number;
@@ -89,6 +83,7 @@ VectorXd Data::LeVetor(ifstream &readFile, int dim){
    string line;
    getline(readFile, line);
    std::istringstream thisLine(line);
+   cout << thisLine.str() << endl;
    while(thisLine >> number){
       if(number == "inf"){
          vetor(col) = infinity;
@@ -105,7 +100,6 @@ VectorXd Data::LeVetor(ifstream &readFile, int dim){
    }
    return vetor;
 }
-
 
 
 double Data::safe_stod(const std::string& str) {

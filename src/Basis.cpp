@@ -4,8 +4,8 @@
 #include <string>
 #include <limits>
 #include <numeric>
-#include <Eigen/Dense>
-#include <Eigen/Sparse>
+#include "../Eigen/Dense"
+#include "../Eigen/Sparse"
 #include <suitesparse/umfpack.h>
 
 using namespace std;
@@ -18,6 +18,7 @@ Basis::Basis(MatrixXd &B)
 
     (void)umfpack_di_symbolic(this->B.rows(), this->B.cols(), this->B.outerIndexPtr(), this->B.innerIndexPtr(), this->B.valuePtr(), &Symbolic, null, null);
     (void)umfpack_di_numeric(this->B.outerIndexPtr(), this->B.innerIndexPtr(), this->B.valuePtr(), Symbolic, &Numeric, null, null);
+    
 }
 
 Basis::~Basis()
@@ -27,7 +28,9 @@ Basis::~Basis()
     umfpack_di_free_symbolic(&Symbolic);
 }
 
-void Basis::getP(VectorXd &p, VectorXd &c)
+
+
+void Basis::getP(VectorXd &p, VectorXd &c, int cont)
 {
     VectorXd v_1(c.rows());
     VectorXd v_i = c;
@@ -47,18 +50,19 @@ void Basis::getP(VectorXd &p, VectorXd &c)
         v_1(indice) = (v_i(indice) - soma) / this->v[i].second(indice);
         v_i = v_1;
     }
-    // p = this->B.transpose().colPivHouseholderQr().solve(v_i);
-
-    (void)umfpack_di_solve(UMFPACK_A, this->B.outerIndexPtr(), this->B.innerIndexPtr(), this->B.valuePtr(), p.data(), v_i.data(), Numeric, null, null);
+    
+    (void)umfpack_di_solve(UMFPACK_At, this->B.outerIndexPtr(), this->B.innerIndexPtr(), this->B.valuePtr(), p.data(), v_i.data(), Numeric, null, null);
+ 
 }
 
-void Basis::getD(VectorXd &d, VectorXd &a)
+void Basis::getD(VectorXd &d, VectorXd &a, int cont, MatrixXd variaveis_basicas, Data& data)
 {
-    // VectorXd v_1 = this->B.colPivHouseholderQr().solve(a);
+ 
     VectorXd v_1(a.rows());
 
     (void)umfpack_di_solve(UMFPACK_A, this->B.outerIndexPtr(), this->B.innerIndexPtr(), this->B.valuePtr(), v_1.data(), a.data(), Numeric, null, null);
 
+   
     for (int i = 0; i < this->v.size(); i++)
     {
         VectorXd v_i(v_1.size());
@@ -74,6 +78,7 @@ void Basis::getD(VectorXd &d, VectorXd &a)
         v_1 = v_i;
     }
     d = v_1;
+
 }
 
 void Basis::addElement(pair<int, VectorXd> &p)
@@ -83,12 +88,12 @@ void Basis::addElement(pair<int, VectorXd> &p)
 
 void Basis::loadB(Data &data, MatrixXd &variaveis_basicas)
 {
-    MatrixXd Bb(data.getMatrixA()->rows(), data.getMatrixA()->rows());
+    
     for (int i = 0; i < variaveis_basicas.rows(); i++)
     {
-        Bb.col(i) = data.getMatrixA()->col(variaveis_basicas(i, 0));
+        B.col(i) = data.getMatrixA()->col(variaveis_basicas(i, 0));
     }
-    this->B = Bb.sparseView();
+    //this->B = Bb.sparseView();
     this->v.clear();
 
     umfpack_di_free_symbolic(&Symbolic);
